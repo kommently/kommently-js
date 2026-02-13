@@ -95,3 +95,35 @@ window.__KOMMENTLY_WIDGET_SCRIPT_URL__ = "http://localhost:5173/widget.js";
 pnpm check
 pnpm check:packages
 ```
+
+## Releases
+
+This repo uses a manual GitHub release workflow.
+
+### GitHub release workflow
+
+- Workflow: `.github/workflows/release.yml`
+- Trigger: manual (`workflow_dispatch`) only
+- Inputs:
+  - `tag` (example: `v1.0.0` or `@kommently-js/react@1.0.1`)
+  - `title`
+  - `target` (defaults to `main`)
+  - `generate_notes` / `notes`
+  - `prerelease`
+
+### Manual npm publish
+
+After creating the GitHub release, publish package(s) manually:
+
+```bash
+cd packages/react
+npm publish --access public
+```
+
+Repeat for other packages when needed.
+
+### Public repo safety
+
+- The release workflow is manual-only (`workflow_dispatch`).
+- Only users with write/admin access can run it in your repo.
+- No npm publishing is performed by GitHub Actions.

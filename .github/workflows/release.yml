@@ -1,0 +1,77 @@
+name: Create GitHub Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (example: v1.0.0 or @kommently-js/react@1.0.1)"
+        required: true
+        type: string
+      title:
+        description: "Release title"
+        required: true
+        type: string
+      target:
+        description: "Target branch or commit SHA"
+        required: false
+        default: "main"
+        type: string
+      generate_notes:
+        description: "Auto-generate release notes"
+        required: false
+        default: true
+        type: boolean
+      prerelease:
+        description: "Mark as pre-release"
+        required: false
+        default: false
+        type: boolean
+      notes:
+        description: "Release notes (used only when generate_notes is false)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    if: github.event.repository.fork == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          TITLE: ${{ inputs.title }}
+          TARGET: ${{ inputs.target }}
+          GENERATE_NOTES: ${{ inputs.generate_notes }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+
+          FLAGS=()
+          if [ "${PRERELEASE}" = "true" ]; then
+            FLAGS+=(--prerelease)
+          fi
+
+          if [ "${GENERATE_NOTES}" = "true" ]; then
+            gh release create "${TAG}" \
+              --target "${TARGET}" \
+              --title "${TITLE}" \
+              --generate-notes \
+              "${FLAGS[@]}"
+          else
+            gh release create "${TAG}" \
+              --target "${TARGET}" \
+              --title "${TITLE}" \
+              --notes "${NOTES:-Release ${TAG}}" \
+              "${FLAGS[@]}"
+          fi
