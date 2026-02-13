@@ -98,24 +98,34 @@ pnpm check:packages
 
 ## Releases
 
-This repo uses a manual GitHub release workflow with automatic npm publish for package tags.
+This repo uses tag-driven releases with automatic npm publish for package tags.
 
 ### GitHub release workflow
 
 - Workflow: `.github/workflows/release.yml`
-- Trigger: manual (`workflow_dispatch`) only
-- Inputs:
-  - `tag` (example: `v1.0.0` or `@kommently/react@1.0.1`)
-  - `title`
-  - `target` (defaults to `main`)
-  - `generate_notes` / `notes`
-  - `prerelease`
+- Trigger: pushing a git tag
 
 ### Publish behavior
 
 - Monorepo tags like `v1.0.1`: creates GitHub release only.
-- Package tags like `@kommently/react@1.0.1`: publishes that package to npm via OIDC, then creates the GitHub release.
+- Package tags like `@kommently/react@1.0.1`: publishes that package to npm via OIDC, then creates GitHub release.
 - Package tag version must match the package's `package.json` version.
+
+### Release commands
+
+Monorepo release tag:
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+React package release tag:
+
+```bash
+git tag @kommently/react@1.0.1
+git push origin @kommently/react@1.0.1
+```
 
 ### OIDC requirement
 
@@ -123,6 +133,6 @@ Trusted publishing must be configured for this repository/package pair on npm.
 
 ### Public repo safety
 
-- The release workflow is manual-only (`workflow_dispatch`).
-- Only users with write/admin access can run it in your repo.
+- Releases only run when a tag is pushed to the repository.
+- Only users with tag push access can trigger releases.
 - No npm token secret is required.

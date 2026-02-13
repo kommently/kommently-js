@@ -1,35 +1,9 @@
-name: Create GitHub Release
+name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (example: v1.0.0 or @kommently/react@1.0.1)"
-        required: true
-        type: string
-      title:
-        description: "Release title"
-        required: true
-        type: string
-      target:
-        description: "Target branch or commit SHA"
-        required: false
-        default: "main"
-        type: string
-      generate_notes:
-        description: "Auto-generate release notes"
-        required: false
-        default: true
-        type: boolean
-      prerelease:
-        description: "Mark as pre-release"
-        required: false
-        default: false
-        type: boolean
-      notes:
-        description: "Release notes (used only when generate_notes is false)"
-        required: false
-        type: string
+  push:
+    tags:
+      - "*"
 
 permissions:
   contents: write
@@ -40,6 +14,7 @@ jobs:
     if: github.event.repository.fork == false
     runs-on: ubuntu-latest
     outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
       publish_package: ${{ steps.resolve.outputs.publish_package }}
       package_dir: ${{ steps.resolve.outputs.package_dir }}
       package_name: ${{ steps.resolve.outputs.package_name }}
@@ -49,15 +24,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target }}
+          fetch-depth: 0
 
       - name: Resolve tag target
         id: resolve
         env:
-          TAG: ${{ inputs.tag }}
+          TAG: ${{ github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
           if [[ "${TAG}" =~ ^@[^/]+/[^@]+@[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             PACKAGE_NAME="${TAG%@*}"
@@ -93,13 +70,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target }}
-
-      - name: Require main branch for npm trusted publish
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo "::error::Trusted publishing must run from the main branch. Run this workflow with branch=main."
-          exit 1
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -107,54 +78,47 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
+      - name: Upgrade npm CLI for trusted publishing
+        run: npm i -g npm@latest
+
       - name: Publish package to npm (OIDC)
         env:
           PACKAGE_DIR: ${{ needs.prepare.outputs.package_dir }}
         shell: bash
         run: |
           set -euo pipefail
+          npm --version
           cd "${PACKAGE_DIR}"
           npm publish --access public --provenance
 
   create-release:
     needs: [prepare, publish-package]
-    if: always() && needs.prepare.result == 'success' && (needs['publish-package'].result == 'success' || needs['publish-package'].result == 'skipped')
+    if: always() && needs.prepare.result == 'success' && (needs.publish-package.result == 'success' || needs.publish-package.result == 'skipped')
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target }}
           fetch-depth: 0
 
-      - name: Create release
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ inputs.tag }}
-          TITLE: ${{ inputs.title }}
-          TARGET: ${{ inputs.target }}
-          GENERATE_NOTES: ${{ inputs.generate_notes }}
-          PRERELEASE: ${{ inputs.prerelease }}
-          NOTES: ${{ inputs.notes }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          PACKAGE_NAME: ${{ needs.prepare.outputs.package_name }}
+          PACKAGE_VERSION: ${{ needs.prepare.outputs.package_version }}
+        shell: bash
         run: |
           set -euo pipefail
 
-          FLAGS=()
-          if [ "${PRERELEASE}" = "true" ]; then
-            FLAGS+=(--prerelease)
+          if [[ -n "${PACKAGE_NAME}" && -n "${PACKAGE_VERSION}" ]]; then
+            TITLE="${PACKAGE_NAME} v${PACKAGE_VERSION}"
+          else
+            TITLE="${TAG}"
           fi
 
-          if [ "${GENERATE_NOTES}" = "true" ]; then
-            gh release create "${TAG}" \
-              --target "${TARGET}" \
-              --title "${TITLE}" \
-              --generate-notes \
-              "${FLAGS[@]}"
-          else
-            gh release create "${TAG}" \
-              --target "${TARGET}" \
-              --title "${TITLE}" \
-              --notes "${NOTES:-Release ${TAG}}" \
-              "${FLAGS[@]}"
-          fi
+          gh release create "${TAG}" \
+            --target "${GITHUB_SHA}" \
+            --title "${TITLE}" \
+            --generate-notes
