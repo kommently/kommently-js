@@ -1,0 +1,33 @@
+{
+  "name": "@kommently-js/react",
+  "version": "0.1.0",
+  "description": "React embed for Kommently comments",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "kommently",
+    "comments",
+    "sdk",
+    "react",
+    "embed"
+  ],
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "scripts": {
+    "check": "node --check src/index.js"
+  },
+  "license": "MIT"
+}

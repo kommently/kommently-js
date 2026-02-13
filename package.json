@@ -1,0 +1,13 @@
+{
+  "name": "kommently-sdk-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "node --check packages/react/src/index.js && node --check packages/solid/src/index.js && node --check packages/vue/src/index.js && node --check packages/svelte/src/index.js",
+    "check:packages": "pnpm -r --if-present run check"
+  }
+}
