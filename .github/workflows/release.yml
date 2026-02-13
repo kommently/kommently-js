@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "*"
+      - "**"
 
 permissions:
   contents: write
@@ -65,6 +65,9 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.publish_package == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout
@@ -76,10 +79,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org
 
       - name: Upgrade npm CLI for trusted publishing
         run: npm i -g npm@latest
+
+      - name: Ensure tokenless npm auth for OIDC
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f ~/.npmrc .npmrc
 
       - name: Publish package to npm (OIDC)
         env:
@@ -89,7 +97,7 @@ jobs:
           set -euo pipefail
           npm --version
           cd "${PACKAGE_DIR}"
-          npm publish --access public --provenance
+          npm publish --registry https://registry.npmjs.org --access public --provenance
 
   create-release:
     needs: [prepare, publish-package]
