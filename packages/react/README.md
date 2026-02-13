@@ -18,15 +18,4 @@ export function CommentsWidget() {
 }
 ```
 
-## Optional local dev override
-
-Set this before your app mounts:
-
-```ts
-window.__KOMMENTLY_DEV__ = {
-  apiBaseUrl: "http://localhost:3000",
-  widgetScriptUrl: "http://localhost:5173/widget.js"
-};
-```
-
 TypeScript declarations are included in the package.
