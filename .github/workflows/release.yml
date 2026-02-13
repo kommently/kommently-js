@@ -1,24 +1,28 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "**"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Release target"
+        required: true
+        type: choice
+        options:
+          - react
+          - monorepo
+      version:
+        description: "Version (without v), e.g. 1.0.2"
+        required: true
+        type: string
 
 permissions:
   contents: write
   id-token: write
 
 jobs:
-  prepare:
+  release:
     if: github.event.repository.fork == false
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.resolve.outputs.tag }}
-      publish_package: ${{ steps.resolve.outputs.publish_package }}
-      package_dir: ${{ steps.resolve.outputs.package_dir }}
-      package_name: ${{ steps.resolve.outputs.package_name }}
-      package_version: ${{ steps.resolve.outputs.package_version }}
 
     steps:
       - name: Checkout
@@ -26,72 +30,73 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve tag target
-        id: resolve
+      - name: Validate inputs and resolve release metadata
+        id: meta
         env:
-          TAG: ${{ github.ref_name }}
+          TARGET: ${{ inputs.target }}
+          VERSION: ${{ inputs.version }}
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version must be semver like 1.0.2 or 1.0.2-beta.1"
+            exit 1
+          fi
 
-          if [[ "${TAG}" =~ ^@[^/]+/[^@]+@[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            PACKAGE_NAME="${TAG%@*}"
-            PACKAGE_VERSION="${TAG##*@}"
+          if [[ "${TARGET}" == "react" ]]; then
+            PACKAGE_DIR="packages/react"
+            PACKAGE_NAME="@kommently/react"
+            PACKAGE_VERSION="$(node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('packages/react/package.json','utf8'));process.stdout.write(String(pkg.version||''));")"
 
-            MATCHED_DIR="$(node -e "const fs=require('fs');const path=require('path');const root=path.resolve('packages');for (const d of fs.readdirSync(root)){const p=path.join(root,d,'package.json');if(!fs.existsSync(p)) continue;const pkg=JSON.parse(fs.readFileSync(p,'utf8'));if(pkg.name===process.argv[1]){process.stdout.write(path.join('packages',d));process.exit(0);}}process.exit(1);" "${PACKAGE_NAME}")"
-
-            ACTUAL_VERSION="$(node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));process.stdout.write(String(pkg.version||''));" "${MATCHED_DIR}/package.json")"
-
-            if [[ "${ACTUAL_VERSION}" != "${PACKAGE_VERSION}" ]]; then
-              echo "::error::Tag version ${PACKAGE_VERSION} does not match ${PACKAGE_NAME} package.json version ${ACTUAL_VERSION}."
+            if [[ "${PACKAGE_VERSION}" != "${VERSION}" ]]; then
+              echo "::error::packages/react/package.json version is ${PACKAGE_VERSION}, expected ${VERSION}."
               exit 1
             fi
 
-            echo "publish_package=true" >> "$GITHUB_OUTPUT"
-            echo "package_dir=${MATCHED_DIR}" >> "$GITHUB_OUTPUT"
-            echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
-            echo "package_version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
-            exit 0
+            TAG="${PACKAGE_NAME}@${VERSION}"
+            TITLE="${PACKAGE_NAME} v${VERSION}"
+            SHOULD_PUBLISH="true"
+          else
+            TAG="v${VERSION}"
+            TITLE="kommently-js v${VERSION}"
+            PACKAGE_DIR=""
+            PACKAGE_NAME=""
+            SHOULD_PUBLISH="false"
           fi
 
-          echo "publish_package=false" >> "$GITHUB_OUTPUT"
-          echo "package_dir=" >> "$GITHUB_OUTPUT"
-          echo "package_name=" >> "$GITHUB_OUTPUT"
-          echo "package_version=" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "::error::Tag ${TAG} already exists."
+            exit 1
+          fi
 
-  publish-package:
-    needs: prepare
-    if: needs.prepare.outputs.publish_package == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "title=${TITLE}" >> "$GITHUB_OUTPUT"
+          echo "package_dir=${PACKAGE_DIR}" >> "$GITHUB_OUTPUT"
+          echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "should_publish=${SHOULD_PUBLISH}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
+        if: steps.meta.outputs.should_publish == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Upgrade npm CLI for trusted publishing
+        if: steps.meta.outputs.should_publish == 'true'
         run: npm i -g npm@latest
 
       - name: Ensure tokenless npm auth for OIDC
+        if: steps.meta.outputs.should_publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
           rm -f ~/.npmrc .npmrc
 
       - name: Publish package to npm (OIDC)
+        if: steps.meta.outputs.should_publish == 'true'
         env:
-          PACKAGE_DIR: ${{ needs.prepare.outputs.package_dir }}
+          PACKAGE_DIR: ${{ steps.meta.outputs.package_dir }}
         shell: bash
         run: |
           set -euo pipefail
@@ -99,33 +104,23 @@ jobs:
           cd "${PACKAGE_DIR}"
           npm publish --registry https://registry.npmjs.org --access public --provenance
 
-  create-release:
-    needs: [prepare, publish-package]
-    if: always() && needs.prepare.result == 'success' && (needs.publish-package.result == 'success' || needs.publish-package.result == 'skipped')
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Create and push git tag
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git tag "${TAG}" "${GITHUB_SHA}"
+          git push origin "${TAG}"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.prepare.outputs.tag }}
-          PACKAGE_NAME: ${{ needs.prepare.outputs.package_name }}
-          PACKAGE_VERSION: ${{ needs.prepare.outputs.package_version }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          TITLE: ${{ steps.meta.outputs.title }}
         shell: bash
         run: |
           set -euo pipefail
-
-          if [[ -n "${PACKAGE_NAME}" && -n "${PACKAGE_VERSION}" ]]; then
-            TITLE="${PACKAGE_NAME} v${PACKAGE_VERSION}"
-          else
-            TITLE="${TAG}"
-          fi
-
           gh release create "${TAG}" \
             --target "${GITHUB_SHA}" \
             --title "${TITLE}" \
