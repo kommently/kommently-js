@@ -32,7 +32,7 @@
   "bugs": {
     "url": "https://github.com/kommently/kommently-js/issues"
   },
-  "homepage": "https://github.com/kommently/kommently-js#readme",
+  "homepage": "https://kommently.com",
   "peerDependencies": {
     "react": ">=18"
   },
