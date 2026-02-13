@@ -1,5 +1,5 @@
 {
-  "name": "@kommently-js/react",
+  "name": "@kommently/react",
   "version": "1.0.0",
   "description": "React embed for Kommently comments",
   "author": "Letrix Labs (Kommently)",
