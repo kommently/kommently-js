@@ -1,7 +1,9 @@
 {
-  "name": "kommently-sdk-workspace",
+  "name": "kommently-js",
   "private": true,
   "version": "1.0.0",
+  "description": "React embed for Kommently comments",
+  "author": "Letrix Labs (Kommently)",
   "packageManager": "pnpm@9.15.0",
   "workspaces": [
     "packages/*"
