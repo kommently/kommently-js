@@ -33,6 +33,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   prepare:
@@ -87,9 +88,6 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.publish_package == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
       - name: Checkout
@@ -97,10 +95,17 @@ jobs:
         with:
           ref: ${{ inputs.target }}
 
+      - name: Require main branch for npm trusted publish
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Trusted publishing must run from the main branch. Run this workflow with branch=main."
+          exit 1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          registry-url: https://registry.npmjs.org
 
       - name: Publish package to npm (OIDC)
         env:
@@ -108,7 +113,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm config delete //registry.npmjs.org/:_authToken || true
           cd "${PACKAGE_DIR}"
           npm publish --access public --provenance
 
