@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (example: kommently-js v1.0.0 or @kommently-js/react v1.0.0)"
+        description: "Release tag (example: v1.0.0 or @kommently/react@1.0.1)"
         required: true
         type: string
       title:
@@ -35,8 +35,82 @@ permissions:
   contents: write
 
 jobs:
-  create-release:
+  prepare:
     if: github.event.repository.fork == false
+    runs-on: ubuntu-latest
+    outputs:
+      publish_package: ${{ steps.resolve.outputs.publish_package }}
+      package_dir: ${{ steps.resolve.outputs.package_dir }}
+      package_name: ${{ steps.resolve.outputs.package_name }}
+      package_version: ${{ steps.resolve.outputs.package_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve tag target
+        id: resolve
+        env:
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${TAG}" =~ ^@[^/]+/[^@]+@[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            PACKAGE_NAME="${TAG%@*}"
+            PACKAGE_VERSION="${TAG##*@}"
+
+            MATCHED_DIR="$(node -e "const fs=require('fs');const path=require('path');const root=path.resolve('packages');for (const d of fs.readdirSync(root)){const p=path.join(root,d,'package.json');if(!fs.existsSync(p)) continue;const pkg=JSON.parse(fs.readFileSync(p,'utf8'));if(pkg.name===process.argv[1]){process.stdout.write(path.join('packages',d));process.exit(0);}}process.exit(1);" "${PACKAGE_NAME}")"
+
+            ACTUAL_VERSION="$(node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));process.stdout.write(String(pkg.version||''));" "${MATCHED_DIR}/package.json")"
+
+            if [[ "${ACTUAL_VERSION}" != "${PACKAGE_VERSION}" ]]; then
+              echo "::error::Tag version ${PACKAGE_VERSION} does not match ${PACKAGE_NAME} package.json version ${ACTUAL_VERSION}."
+              exit 1
+            fi
+
+            echo "publish_package=true" >> "$GITHUB_OUTPUT"
+            echo "package_dir=${MATCHED_DIR}" >> "$GITHUB_OUTPUT"
+            echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
+            echo "package_version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "publish_package=false" >> "$GITHUB_OUTPUT"
+          echo "package_dir=" >> "$GITHUB_OUTPUT"
+          echo "package_name=" >> "$GITHUB_OUTPUT"
+          echo "package_version=" >> "$GITHUB_OUTPUT"
+
+  publish-package:
+    needs: prepare
+    if: needs.prepare.outputs.publish_package == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish package to npm (OIDC)
+        env:
+          PACKAGE_DIR: ${{ needs.prepare.outputs.package_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${PACKAGE_DIR}"
+          npm publish --access public --provenance
+
+  create-release:
+    needs: [prepare, publish-package]
+    if: always() && needs.prepare.result == 'success' && (needs['publish-package'].result == 'success' || needs['publish-package'].result == 'skipped')
     runs-on: ubuntu-latest
 
     steps:

@@ -98,32 +98,31 @@ pnpm check:packages
 
 ## Releases
 
-This repo uses a manual GitHub release workflow.
+This repo uses a manual GitHub release workflow with automatic npm publish for package tags.
 
 ### GitHub release workflow
 
 - Workflow: `.github/workflows/release.yml`
 - Trigger: manual (`workflow_dispatch`) only
 - Inputs:
-  - `tag` (example: `v1.0.0` or `@kommently-js/react@1.0.1`)
+  - `tag` (example: `v1.0.0` or `@kommently/react@1.0.1`)
   - `title`
   - `target` (defaults to `main`)
   - `generate_notes` / `notes`
   - `prerelease`
 
-### Manual npm publish
+### Publish behavior
 
-After creating the GitHub release, publish package(s) manually:
+- Monorepo tags like `v1.0.1`: creates GitHub release only.
+- Package tags like `@kommently/react@1.0.1`: publishes that package to npm via OIDC, then creates the GitHub release.
+- Package tag version must match the package's `package.json` version.
 
-```bash
-cd packages/react
-npm publish --access public
-```
+### OIDC requirement
 
-Repeat for other packages when needed.
+Trusted publishing must be configured for this repository/package pair on npm.
 
 ### Public repo safety
 
 - The release workflow is manual-only (`workflow_dispatch`).
 - Only users with write/admin access can run it in your repo.
-- No npm publishing is performed by GitHub Actions.
+- No npm token secret is required.
