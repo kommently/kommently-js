@@ -24,6 +24,15 @@
     "react",
     "embed"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kommently/kommently-js",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/kommently/kommently-js/issues"
+  },
+  "homepage": "https://github.com/kommently/kommently-js#readme",
   "peerDependencies": {
     "react": ">=18"
   },

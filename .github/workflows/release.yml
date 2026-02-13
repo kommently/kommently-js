@@ -48,9 +48,14 @@ jobs:
             PACKAGE_DIR="packages/react"
             PACKAGE_NAME="@kommently/react"
             PACKAGE_VERSION="$(node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('packages/react/package.json','utf8'));process.stdout.write(String(pkg.version||''));")"
+            PACKAGE_REPO_URL="$(node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('packages/react/package.json','utf8'));const v=pkg.repository&&typeof pkg.repository==='object'?pkg.repository.url:'';process.stdout.write(String(v||''));")"
 
             if [[ "${PACKAGE_VERSION}" != "${VERSION}" ]]; then
               echo "::error::packages/react/package.json version is ${PACKAGE_VERSION}, expected ${VERSION}."
+              exit 1
+            fi
+            if [[ "${PACKAGE_REPO_URL}" != "https://github.com/kommently/kommently-js" ]]; then
+              echo "::error::packages/react/package.json repository.url must be https://github.com/kommently/kommently-js for npm provenance."
               exit 1
             fi
 
