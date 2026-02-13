@@ -2,7 +2,7 @@
   "name": "@kommently-js/react",
   "version": "1.0.0",
   "description": "React embed for Kommently comments",
-  "author": "Letrix Labs (Kommently)"
+  "author": "Letrix Labs (Kommently)",
   "type": "module",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
