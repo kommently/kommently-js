@@ -14,7 +14,7 @@ npm i @kommently/react
 import { KommentlyEmbed } from "@kommently/react";
 
 export function CommentsWidget() {
-  return <KommentlyEmbed siteId="SITE_ID" slug="/my-post" />;
+  return <KommentlyEmbed siteId="SITE_ID" slug="/my-post" backgroundEnabled={false} />;
 }
 ```
 

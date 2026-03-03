@@ -1,5 +1,3 @@
-import { createElement, useEffect, useRef } from "react";
-
 const DEFAULT_WIDGET_SCRIPT_URL = "https://cdn.kommently.com/js/widget.js";
 const LEGACY_MOUNT_ID = "comments-widget";
 
@@ -58,55 +56,52 @@ export function loadKommentlyWidgetScript(overrideUrl) {
   });
 }
 
-export function KommentlyEmbed({ siteId, slug, backgroundEnabled = true, className, style }) {
-  const hostRef = useRef(null);
+function normalizeEmbedOptions(options) {
+  if (options && typeof options === "object") {
+    return options;
+  }
 
-  useEffect(() => {
-    if (!hostRef.current) {
-      return undefined;
+  return {
+    siteId: "",
+    slug: undefined,
+    backgroundEnabled: true
+  };
+}
+
+export function kommentlyEmbed(node, options) {
+  let currentOptions = normalizeEmbedOptions(options);
+
+  function apply() {
+    const siteId = String(currentOptions.siteId ?? "").trim();
+    if (!siteId) {
+      node.replaceChildren();
+      return;
     }
 
-    const host = hostRef.current;
-    const resolvedSiteId = String(siteId ?? "").trim();
-    if (!resolvedSiteId) {
-      host.replaceChildren();
-      delete host.dataset.kommentlySiteId;
-      delete host.dataset.kommentlySlug;
-      delete host.dataset.kommentlyBackgroundEnabled;
-      return undefined;
-    }
-
-    const resolvedSlug = slug == null ? "" : String(slug).trim();
-    const resolvedBackgroundEnabled = normalizeBackgroundEnabled(backgroundEnabled);
-    const previousSiteId = host.dataset.kommentlySiteId ?? "";
-    const previousSlug = host.dataset.kommentlySlug ?? "";
-    const previousBackgroundEnabled = host.dataset.kommentlyBackgroundEnabled ?? "";
-    const existingScript = host.querySelector("script[data-site-id]");
-    if (
-      existingScript &&
-      previousSiteId === resolvedSiteId &&
-      previousSlug === resolvedSlug &&
-      previousBackgroundEnabled === String(resolvedBackgroundEnabled)
-    ) {
-      return undefined;
-    }
-
+    const slug = currentOptions.slug == null ? "" : String(currentOptions.slug).trim();
+    const backgroundEnabled = normalizeBackgroundEnabled(currentOptions.backgroundEnabled);
     const src = resolveWidgetScriptUrl();
 
     const existingMount = document.getElementById(LEGACY_MOUNT_ID);
-    if (existingMount && !host.contains(existingMount)) {
+    if (existingMount && !node.contains(existingMount)) {
       existingMount.remove();
     }
 
     const mountNode = document.createElement("div");
     mountNode.id = LEGACY_MOUNT_ID;
-    const script = createScriptTag(src, resolvedSiteId, resolvedSlug, resolvedBackgroundEnabled);
-    host.replaceChildren(mountNode, script);
-    host.dataset.kommentlySiteId = resolvedSiteId;
-    host.dataset.kommentlySlug = resolvedSlug;
-    host.dataset.kommentlyBackgroundEnabled = String(resolvedBackgroundEnabled);
-    return undefined;
-  }, [siteId, slug, backgroundEnabled]);
+    const script = createScriptTag(src, siteId, slug, backgroundEnabled);
+    node.replaceChildren(mountNode, script);
+  }
 
-  return createElement("div", { ref: hostRef, className, style });
+  apply();
+
+  return {
+    update(nextOptions) {
+      currentOptions = normalizeEmbedOptions(nextOptions);
+      apply();
+    },
+    destroy() {
+      node.replaceChildren();
+    }
+  };
 }

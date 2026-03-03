@@ -1,0 +1,42 @@
+{
+  "name": "@kommently-js/solid",
+  "version": "0.1.0",
+  "description": "Solid embed utilities for Kommently comments",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "kommently",
+    "comments",
+    "sdk",
+    "solid",
+    "embed"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kommently/kommently-js",
+    "directory": "packages/solid"
+  },
+  "bugs": {
+    "url": "https://github.com/kommently/kommently-js/issues"
+  },
+  "homepage": "https://kommently.com",
+  "peerDependencies": {
+    "solid-js": ">=1.8"
+  },
+  "scripts": {
+    "check": "node --check src/index.js"
+  },
+  "license": "MIT"
+}

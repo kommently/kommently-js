@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, DefineComponent } from "vue";
 
 export interface KommentlyDevConfig {
   apiBaseUrl?: string;
@@ -16,9 +16,9 @@ export interface KommentlyEmbedProps {
   siteId: string;
   slug?: string;
   backgroundEnabled?: boolean;
-  className?: string;
-  style?: CSSProperties;
+  class?: string;
+  style?: CSSProperties | string | Record<string, string | number>;
 }
 
 export function loadKommentlyWidgetScript(overrideUrl?: string): Promise<void>;
-export function KommentlyEmbed(props: KommentlyEmbedProps): ReactNode;
+export const KommentlyEmbed: DefineComponent<KommentlyEmbedProps>;

@@ -1,5 +1,3 @@
-import type { CSSProperties, ReactNode } from "react";
-
 export interface KommentlyDevConfig {
   apiBaseUrl?: string;
   widgetScriptUrl?: string;
@@ -12,13 +10,16 @@ declare global {
   }
 }
 
-export interface KommentlyEmbedProps {
+export interface KommentlyEmbedActionOptions {
   siteId: string;
   slug?: string;
   backgroundEnabled?: boolean;
-  className?: string;
-  style?: CSSProperties;
+}
+
+export interface KommentlyEmbedAction {
+  update(options: KommentlyEmbedActionOptions): void;
+  destroy(): void;
 }
 
 export function loadKommentlyWidgetScript(overrideUrl?: string): Promise<void>;
-export function KommentlyEmbed(props: KommentlyEmbedProps): ReactNode;
+export function kommentlyEmbed(node: HTMLElement, options: KommentlyEmbedActionOptions): KommentlyEmbedAction;

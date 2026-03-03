@@ -6,10 +6,10 @@ Official framework SDKs for embedding Kommently comments.
 
 | Package | Usage |
 | --- | --- |
-| `@kommently-js/react` | `<KommentlyEmbed siteId="..." slug="..." />` |
-| `@kommently-js/vue` (coming soon) | `<KommentlyEmbed site-id="..." slug="..." />` |
-| `@kommently-js/svelte` (coming soon) | `<div use:kommentlyEmbed={{ siteId, slug }} />` |
-| `@kommently-js/solid` (coming soon) | `<div use:kommentlyEmbed={{ siteId, slug }} />` |
+| `@kommently-js/react` | `<KommentlyEmbed siteId="..." slug="..." backgroundEnabled={false} />` |
+| `@kommently-js/vue` (coming soon) | `<KommentlyEmbed site-id="..." slug="..." :background-enabled="false" />` |
+| `@kommently-js/svelte` (coming soon) | `<div use:kommentlyEmbed={{ siteId, slug, backgroundEnabled: false }} />` |
+| `@kommently-js/solid` (coming soon) | `<div use:kommentlyEmbed={{ siteId, slug, backgroundEnabled: false }} />` |
 
 ## Install
 
@@ -31,7 +31,7 @@ npm i @kommently-js/solid
 import { KommentlyEmbed } from "@kommently-js/react";
 
 export function CommentsWidget() {
-  return <KommentlyEmbed siteId="SITE_ID" slug="/my-post" />;
+  return <KommentlyEmbed siteId="SITE_ID" slug="/my-post" backgroundEnabled={false} />;
 }
 ```
 
@@ -43,7 +43,7 @@ import { KommentlyEmbed } from "@kommently-js/vue";
 </script>
 
 <template>
-  <KommentlyEmbed site-id="SITE_ID" slug="/my-post" />
+  <KommentlyEmbed site-id="SITE_ID" slug="/my-post" :background-enabled="false" />
 </template>
 ```
 
@@ -54,7 +54,7 @@ import { KommentlyEmbed } from "@kommently-js/vue";
 import { kommentlyEmbed } from "@kommently-js/svelte";
 </script>
 
-<div use:kommentlyEmbed={{ siteId: "SITE_ID", slug: "/my-post" }} />
+<div use:kommentlyEmbed={{ siteId: "SITE_ID", slug: "/my-post", backgroundEnabled: false }} />
 ```
 
 ## Solid quick start
@@ -63,7 +63,7 @@ import { kommentlyEmbed } from "@kommently-js/svelte";
 import { kommentlyEmbed } from "@kommently-js/solid";
 
 export function CommentsWidget() {
-  return <div use:kommentlyEmbed={{ siteId: "SITE_ID", slug: "/my-post" }} />;
+  return <div use:kommentlyEmbed={{ siteId: "SITE_ID", slug: "/my-post", backgroundEnabled: false }} />;
 }
 ```
 
